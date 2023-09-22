@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+error() {
+  echo "$@"
+}
+
+source .env.setup
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --ip)
+      server_ip="$2"
+      ;;
+    --username)
+      username="$2"
+      ;;
+    --password)
+      password="$2"
+      ;;
+  esac
+  shift
+  shift
+done
+
+if [[ -z $server_ip || -z $username ]]; then
+  echo $'Error: IP address and/or username must be provided \n' >> /dev/stderr
+  echo $'Usage 0: [--options]\n'
+  echo $'Options:'
+  echo $'\t--ip      \t IP address of the server to connect'
+  echo $'\t--username\t Username of the server to connect'
+  echo $'\t--password\t Password of the server to connect (in case it\'s not provided it will try to connect via SSH key)'
+
+  exit 1
+fi
+
+source ./install_docker
+
+setup_vps() {
+  sudo apt update && sudo apt upgrade -y && sudo apt install openssl -y
+
+  install_docker
+
+  docker run hello-world
+}
+
+ssh_uri="$username"@"$server_ip"
+if [[ -z $password ]]; then
+  ssh "$username"@"$server_ip" << EOF
+    $(declare -f install_docker)
+
+    $(typeset -f setup_vps)
+    setup_vps
+EOF
+else
+  sshpass -p $password ssh "$ssh_uri" << EOF
+    $(declare -f install_docker)
+
+    $(typeset -f setup_vps)
+    setup_vps
+EOF
+  sshpass -p $password ssh-copy-id -i ~/.ssh/id_rsa.pub "$ssh_uri"
+fi
+
