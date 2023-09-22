@@ -24,7 +24,8 @@ done
 
 if [[ -z $server_ip || -z $username ]]; then
   echo $'Error: IP address and/or username must be provided \n' >> /dev/stderr
-  echo $'Usage 0: [--options]\n'
+  echo "Usage $0: [--options]"
+  echo ""
   echo $'Options:'
   echo $'\t--ip      \t IP address of the server to connect'
   echo $'\t--username\t Username of the server to connect'
