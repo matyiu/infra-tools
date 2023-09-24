@@ -11,7 +11,7 @@ A set of tools to save time doing cool stuff with machines 😎🔥
 The install script is used to download and setup Harbor by setting up some environment variables related to your server and default passwords you provide.
 
 ### Todo
-[ ] Remove comments from `harbor.yml` file
-[ ] Create script to get an SSL certificate from Let's Encrypt
-[ ] Give the user the option to generate a custom certificate or generate one from Let's Encrypt
-[ ] Download `ca.crt` file after generating the certificates
+- [ ] Remove comments from `harbor.yml` file
+- [ ] Create script to get an SSL certificate from Let's Encrypt
+- [ ] Give the user the option to generate a custom certificate or generate one from Let's Encrypt
+- [ ] Download `ca.crt` file after generating the certificates
