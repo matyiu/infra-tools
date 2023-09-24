@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+
+generate_certificates() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --country) country="$2"
+      ;;
+      --state) state="$2"
+      ;;
+      --locality) locality="$2"
+      ;;
+      --organization) organization="$2"
+      ;;
+      --organization_unit) organization_unit="$2"
+      ;;
+      --domain_name) domain_name="$2"
+      ;;
+    esac
+    shift
+    shift
+  done
+
+  mkdir -p certs
+
+  openssl genrsa -out certs/ca.key 4096
+
+  openssl req -x509 -new -nodes -sha512 -days 3650 \
+   -subj "/C=$country/ST=$state/L=$locality/O=$organization/OU=$organization_unit/CN=$domain_name" \
+   -key certs/ca.key \
+   -out certs/ca.crt
+
+  openssl genrsa -out certs/"$domain_name".key 4096
+
+  openssl req -sha512 -new \
+      -subj "/C=$country/ST=$state/L=$locality/O=$organization/OU=$organization_unit/CN=$domain_name" \
+      -key certs/"$domain_name".key \
+      -out certs/"$domain_name".csr
+
+  cat > certs/v3.ext <<-EOF
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1="$domain_name"
+EOF
+
+  openssl x509 -req -sha512 -days 3650 \
+      -extfile certs/v3.ext \
+      -CA certs/ca.crt -CAkey certs/ca.key -CAcreateserial \
+      -in certs/"$domain_name".csr \
+      -out certs/"$domain_name".crt
+
+  # Transform crt into Docker
+  openssl x509 -inform PEM -in certs/"$domain_name".crt -out certs/"$domain_name".cert
+
+  # Copy certificates for Harbor
+  sudo mkdir -p /data
+  sudo mkdir -p /data/cert
+
+  sudo cp -f certs/"$domain_name".crt /data/cert
+  sudo cp -f certs/"$domain_name".key /data/cert
+
+  # Copy certificates for Docker
+  sudo mkdir -p /etc/docker/certs.d/
+  sudo mkdir -p /etc/docker/certs.d/"$domain_name"/
+
+  sudo cp -f certs/"$domain_name".cert /etc/docker/certs.d/"$domain_name"/
+  sudo cp -f certs/"$domain_name".key /etc/docker/certs.d/"$domain_name"/
+  sudo cp -f certs/ca.crt /etc/docker/certs.d/"$domain_name"/
+
+  sudo systemctl restart docker
+}
+

@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+# Setup variables
+. .env
+. ./generate_certificates
+server_uri="$username"@"$server_ip"
+harbor_path="harbor"
+harbor_file="harbor.yml"
+
+ssh "$server_uri" "bash -s -- --version 2.7.3" < ./download_installer
+
+# Upload harbor config file
+sftp "$server_uri":"$harbor_path" <<< $"put $harbor_file"
+
+# Certificate generation & Harbor installation
+ssh $server_uri << EOF
+  sed -i "s/DOMAIN_NAME/$domain_name/" $harbor_path/$harbor_file
+  sed -i "s/HARBOR_PASSWORD/$harbor_password/" $harbor_path/$harbor_file
+  sed -i "s/DB_PASS/$db_pass/" $harbor_path/$harbor_file
+
+  $(declare -f generate_certificates)
+  generate_certificates \
+    --country $country \
+    --state $state \
+    --locality $locality \
+    --organization $organization \
+    --organization_unit $organization_unit \
+    --domain_name $domain_name
+
+  cd harbor
+  sudo ./install.sh
+EOF
+
+unset $server_ip
+unset $username
+unset $harbor_password
+unset $domain_name
